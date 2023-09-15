@@ -1,0 +1,37 @@
+---
+title: "XGBoost: A Scalable Tree Boosting System"
+subtitle: "@XGBoost"
+author: "Christian Bager Bach Houmann"
+date: 2023-09-22
+date-format: short
+slide-number: true
+bibliography: static/references.bib
+format: 
+    revealjs:
+        theme: dark
+---
+
+# Gradient Boosting
+
+
+# eXtreme Gradient Boosting
+
+## What is XGBoost?
+- XGBoost stands for eXtreme Gradient Boosting
+- Machine Learning algorithm
+- Based on Gradient Boosting
+
+## Why XGBoost?
+
+  
+## Conclusion
+
+
+## Two Strong Points of the Article
+
+
+## Two Weak Points of the Article
+
+
+## Take-Home Message
+
