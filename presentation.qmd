@@ -3,15 +3,74 @@ title: "XGBoost: A Scalable Tree Boosting System"
 subtitle: "@XGBoost"
 author: "Christian Bager Bach Houmann"
 date: 2023-09-22
-date-format: short
+date-format: "D MMM YYYY"
 slide-number: true
 bibliography: static/references.bib
 format: 
     revealjs:
-        theme: dark
+        theme: default
+        toc: true
 ---
 
-# Gradient Boosting
+
+# Background
+
+## Decision Tree {.smaller}
+
+| Preferred Activity | Interest in History | Label         |
+|--------------------|---------------------|---------------|
+| Indoor             | Yes                 | Non-Fiction   |
+| Outdoor            | No                  | Fiction       |
+| Indoor             | No                  | Fiction       |
+| Outdoor            | Yes                 | Non-Fiction   |
+| Indoor             | Yes                 | Non-Fiction   |
+
+<br />
+
+```{mermaid}
+graph TD
+    A[Preferred Activity?] -->|Indoor| B[Interest in History?]
+    A -->|Outdoor| C[Interest in History?]
+    
+    B -->|Yes| D[Read Non-Fiction]
+    B -->|No| E[Read Fiction]
+    
+    C -->|Yes| F[Read Non-Fiction]
+    C -->|No| G[Read Fiction]
+```
+
+
+## Ensemble Learning
+- Simple models like Decision Trees and Linear Regression are limited
+- We can boost performance with ensemble learning
+- Instead of creating complex model (**meta-model**):
+    - Create lots of simple models (w. **weak learners**)
+    - Combine them
+- The output is a weighted voting of the output from each simple model
+
+::: {.notes}
+The simple models I refer to here are called **weak learners**. They aren't poor performing, but they are just made to be underpowered.
+:::
+
+## Boosting
+We can boost by sequentially training and combining weak learners, each trying to correct its predecessor.
+
+1. Start with a weak learner
+2. Calculate the errors of this initial model
+3. Fit another weak learner, this time focusing on the errors made by the previous model
+4. Combine the weak models through weighted averaging
+5. Repeat 2-4 until we have eough models or no further improvements can be made
+
+## Boosting {.unlisted}
+
+Boosting is where you learn $F(x)$ as the sum of $M$ weak learners.
+$$
+F(x)=\sum^{M}_{i=1}f_{i}(x)
+$$
+where $f_{i}(x)$ is the weak learner.
+
+
+## Gradient Boosted Trees
 
 
 # eXtreme Gradient Boosting
@@ -23,9 +82,9 @@ format:
 
 ## Why XGBoost?
 
-  
-## Conclusion
 
+  
+# Conclusion
 
 ## Two Strong Points of the Article
 
