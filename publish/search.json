@@ -1,0 +1,86 @@
+[
+  {
+    "objectID": "presentation.html#supervised-learning",
+    "href": "presentation.html#supervised-learning",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Supervised Learning",
+    "text": "Supervised Learning\n\nSupervised learning is where your training data has the desired solutions (labels).\nThe model learns a function that maps inputs to correct outputs, which it can use on new, unlabled data to make accurate predictions.\n\n\n\nTaken from 5th semester MI course at AAU"
+  },
+  {
+    "objectID": "presentation.html#defining-an-objective",
+    "href": "presentation.html#defining-an-objective",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Defining an objective",
+    "text": "Defining an objective\n\nHow do we measure how well the model fit the data? \\[\nobj(\\theta)=L(\\theta)+\\Omega(\\theta)\n\\]\nObjective function = training loss + regularization term\nTraining loss: how predictive our model is\nRegularization: helps prevent overfitting by penalizing complexity\nThe goal: a simple yet predictive model\n\n\n\n\\(\\theta\\) are model parameters, \\(L\\) is the loss function, and \\(\\Omega\\) is the regularization term."
+  },
+  {
+    "objectID": "presentation.html#decision-trees",
+    "href": "presentation.html#decision-trees",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Decision Trees",
+    "text": "Decision Trees\n\n\n\n\n\n\n\n\n\n\n\n\nXGBoost uses CART: Classification and Regression Trees. I show decision trees to illustrate.\nThese are different from decision trees in that there is a real score associated with each leaf. The leaf only contains this decision value.\n\n\nTaken from 5th semester MI course at AAU."
+  },
+  {
+    "objectID": "presentation.html#ensemble-learning",
+    "href": "presentation.html#ensemble-learning",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Ensemble Learning",
+    "text": "Ensemble Learning\n\nSimple models like Decision Trees and Linear Regression are limited\nWe can boost performance with ensemble learning\nInstead of creating complex model:\n\nCreate lots of simple models (w. weak learners)\nCombine them into a meta-model\n\nThe output is a weighted voting of the output from each simple model\n\n\nWeak learners are learning algorithms that cannot learn complex models, so they are typically fast at training and prediction time.\nThe most frequently used weak learner is a Decision Tree learning algorithm that we often stop splitting the training set after few iterations.\nThe trees we get out are shallow and not very accurate, but still better than random guessing, so the combined model is a lot better."
+  },
+  {
+    "objectID": "presentation.html#boosting",
+    "href": "presentation.html#boosting",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Boosting",
+    "text": "Boosting\nWe can boost by sequentially training and combining weak learners, each trying to correct its predecessor.\n\nStart with a weak learner\nCalculate the errors of this initial model\nFit another weak learner, this time focusing on the errors made by the previous model\nCombine the weak models through weighted averaging\nRepeat 2-4 until we have enough models or no further improvements can be made"
+  },
+  {
+    "objectID": "presentation.html#boosting-1",
+    "href": "presentation.html#boosting-1",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Boosting",
+    "text": "Boosting\nBoosting is where you learn \\(F(x)\\) as the sum of \\(M\\) weak learners. \\[\nF(x)=\\sum^{M}_{i=1}f_{i}(x)\n\\]\nwhere \\(f_{i}(x)\\) is the weak learner."
+  },
+  {
+    "objectID": "presentation.html#gradient-boosted-trees",
+    "href": "presentation.html#gradient-boosted-trees",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Gradient Boosted Trees",
+    "text": "Gradient Boosted Trees\nOriginal paper on Gradient Boosting is by Friedman (2001)."
+  },
+  {
+    "objectID": "presentation.html#what-is-xgboost",
+    "href": "presentation.html#what-is-xgboost",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "What is XGBoost?",
+    "text": "What is XGBoost?\n\nXGBoost stands for eXtreme Gradient Boosting\nMachine Learning algorithm\nBased on Gradient Boosting"
+  },
+  {
+    "objectID": "presentation.html#why-xgboost",
+    "href": "presentation.html#why-xgboost",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Why XGBoost?",
+    "text": "Why XGBoost?"
+  },
+  {
+    "objectID": "presentation.html#two-strong-points-of-the-article",
+    "href": "presentation.html#two-strong-points-of-the-article",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Two Strong Points of the Article",
+    "text": "Two Strong Points of the Article"
+  },
+  {
+    "objectID": "presentation.html#two-weak-points-of-the-article",
+    "href": "presentation.html#two-weak-points-of-the-article",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Two Weak Points of the Article",
+    "text": "Two Weak Points of the Article"
+  },
+  {
+    "objectID": "presentation.html#take-home-message",
+    "href": "presentation.html#take-home-message",
+    "title": "XGBoost: A Scalable Tree Boosting System",
+    "section": "Take-Home Message",
+    "text": "Take-Home Message\n\n\n\n\n\n\nChen, Tianqi, and Carlos Guestrin. 2016. “XGBoost: A Scalable Tree Boosting System.” In Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, 785–94. KDD ’16. New York, NY, USA: Association for Computing Machinery. https://doi.org/10.1145/2939672.2939785.\n\n\nFriedman, Jerome H. 2001. “Greedy Function Approximation: A Gradient Boosting Machine.” The Annals of Statistics 29 (5): 1189–1232. https://doi.org/10.1214/aos/1013203451."
+  }
+]

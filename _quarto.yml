@@ -1,5 +1,5 @@
 project:
   title: "XGBoost Presentation"
-
-
+  output-dir: publish
+  type: website
 
