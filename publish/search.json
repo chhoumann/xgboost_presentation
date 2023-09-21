@@ -46,7 +46,7 @@
     "href": "index.html#gradient-boosted-trees",
     "title": "XGBoost: A Scalable Tree Boosting System",
     "section": "Gradient Boosted Trees",
-    "text": "Gradient Boosted Trees\nOriginal paper on Gradient Boosting is by Friedman (2001)."
+    "text": "Gradient Boosted Trees\n\nSame as boosting, except:\nInstead of fitting to errors from prev. trees, we fit to the negative gradients w.r.t the prediction of the prev. trees.\nSo it generalizes to arbitrary loss functions - as long as they are differentiable\n\n\n\nThese negative gradients represent the direction in which the model should change its predictions to minimize the loss.\nIn other words, the new trees are fit to the residuals defined in the “gradient space” rather than the “output space” like in traditional boosting.\nThe use of gradient descent as an optimization framework also sets it apart from other boosting algorithms.\n\n\nThe original paper on Gradient Boosting is by Friedman (2001)."
   },
   {
     "objectID": "index.html#what-is-xgboost",

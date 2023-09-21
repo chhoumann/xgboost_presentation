@@ -577,8 +577,30 @@ F(x)=\sum^{M}_{i=1}f_{i}(x)
 </section>
 <section id="gradient-boosted-trees" class="slide level2">
 <h2>Gradient Boosted Trees</h2>
-<p>Original paper on Gradient Boosting is by <span class="citation" data-cites="gb">Friedman (<a href="#/take-home-message" role="doc-biblioref" onclick="">2001</a>)</span>.</p>
-</section></section>
+<ul>
+<li>Same as boosting, except:</li>
+<li>Instead of fitting to errors from prev. trees, we fit to the negative gradients w.r.t the prediction of the prev. trees.</li>
+<li>So it generalizes to arbitrary loss functions - as long as they are differentiable</li>
+</ul>
+
+<aside class="notes">
+<p>These negative gradients represent the direction in which the model should change its predictions to minimize the loss.</p>
+<p>In other words, the new trees are fit to the residuals defined in the “gradient space” rather than the “output space” like in traditional boosting.</p>
+<p>The use of gradient descent as an optimization framework also sets it apart from other boosting algorithms.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+<aside><div>
+<p>The original paper on Gradient Boosting is by <span class="citation" data-cites="gb">Friedman (<a href="#/take-home-message" role="doc-biblioref" onclick="">2001</a>)</span>.</p>
+</div></aside></section></section>
 <section>
 <section id="extreme-gradient-boosting" class="title-slide slide level1 center">
 <h1>eXtreme Gradient Boosting</h1>
