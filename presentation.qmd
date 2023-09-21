@@ -20,6 +20,57 @@ You should understand every word of
 
 And why you should use XGBoost!
 
+# Let's try it! {.unlisted .smaller}
+
+-   Using the [IRIS dataset from Scikit-Learn](https://scikit-learn.org/stable/auto_examples/datasets/plot_iris_dataset.html): small dataset with iris (flower) data
+-   We get very good classifications out of the box
+
+:::: {layout-ncol="2" layout-valign="center" .columns}
+:::{.column width="40%"}
+```{.python code-line-numbers="1,6-13"}
+from xgboost import XGBClassifier
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+
+data = load_iris()
+X_train, X_test, y_train, y_test = train_test_split(
+    data['data'], data['target'], 
+    test_size=.2, random_state=42
+)
+bst = XGBClassifier()
+
+bst.fit(X_train, y_train)
+preds = bst.predict(X_test)
+```
+:::
+
+:::{.column width="60%"}
+
+```{python}
+#| fig-align: center
+from xgboost import XGBClassifier
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+
+data = load_iris()
+X_train, X_test, y_train, y_test = train_test_split(data['data'], data['target'], test_size=.2, random_state=42)
+bst = XGBClassifier()
+
+bst.fit(X_train, y_train)
+
+preds = bst.predict(X_test)
+
+cm = confusion_matrix(y_test, preds)
+sns.heatmap(cm, annot=True, fmt="d")
+plt.title("Confusion Matrix")
+plt.show()
+```
+:::
+::::
+
 # Background
 
 *From Zero to Gradient Boosting*
@@ -30,19 +81,6 @@ And why you should use XGBoost!
 - The model learns a function that maps inputs to correct outputs, which it can use on new, unlabled data to make accurate predictions.
 
 <br />
-
-::: {.hidden}
-| Attendance Rate (%) | Hours Studied Per Week | Past Grades (GPA) | Participated in Group Study | [Passed course]{style="color: red"} |
-|---------------|---------------|---------------|---------------|---------------|
-| 90                  | 10                     | 3.5               | Yes                         | Yes                                 |
-| 75                  | 4                      | 2.0               | No                          | No                                  |
-| 85                  | 8                      | 3.0               | No                          | Yes                                 |
-| 60                  | 3                      | 1.5               | No                          | No                                  |
-| 95                  | 12                     | 3.8               | Yes                         | Yes                                 |
-| 80                  | 6                      | 2.5               | Yes                         | No                                  |
-
-: Simple supervised learning problem data
-:::
 
 ![Taken from 5th semester MI course at AAU](static/images/tabular_data.png){fig-align="center"}
 
@@ -60,7 +98,6 @@ $$
 $\theta$ are model parameters, $L$ is the loss function, and $\Omega$ is the regularization term.
 :::
 
-
 ## Decision Trees {.smaller}
 
 ::: {layout-ncol="2"}
@@ -70,32 +107,15 @@ $\theta$ are model parameters, $L$ is the loss function, and $\Omega$ is the reg
 :::
 
 ::: aside
-Taken from 5th semester MI course.
+Taken from 5th semester MI course at AAU.
 :::
 
-::: {.hidden}
-| Preferred Activity | Interest in History | Label       |
-|--------------------|---------------------|-------------|
-| Indoor             | Yes                 | Non-Fiction |
-| Outdoor            | No                  | Fiction     |
-| Indoor             | No                  | Fiction     |
-| Outdoor            | Yes                 | Non-Fiction |
-| Indoor             | Yes                 | Non-Fiction |
+::: {.notes}
+XGBoost uses CART: Classification and Regression Trees. I show decision trees to illustrate.
 
-<br />
-
-```{mermaid}
-graph TD
-    A[Preferred Activity?] -->|Indoor| B[Interest in History?]
-    A -->|Outdoor| C[Interest in History?]
-    
-    B -->|Yes| D[Read Non-Fiction]
-    B -->|No| E[Read Fiction]
-    
-    C -->|Yes| F[Read Non-Fiction]
-    C -->|No| G[Read Fiction]
-```
+These are different from decision trees in that there is a real score associated with each leaf. The leaf only contains this decision value.
 :::
+
 
 ## Ensemble Learning
 
@@ -107,7 +127,11 @@ graph TD
 -   The output is a weighted voting of the output from each simple model
 
 ::: notes
-The simple models I refer to here are called **weak learners**. They aren't poor performing, but they are just made to be underpowered.
+**Weak learners** are learning algorithms that cannot learn complex models, so they are typically fast at training and prediction time.
+
+ The most frequently used weak learner is a Decision Tree learning algorithm that we often stop splitting the training set after few iterations.
+ 
+ The trees we get out are shallow and not very accurate, but still better than random guessing, so the combined model is a lot better.
 :::
 
 ## Boosting
@@ -134,38 +158,6 @@ where $f_{i}(x)$ is the weak learner.
 Original paper on Gradient Boosting is by @gb.
 
 # eXtreme Gradient Boosting
-
-## Let's try it! {.unlisted .smaller}
-
--   Using the [IRIS dataset from Scikit-Learn](https://scikit-learn.org/stable/auto_examples/datasets/plot_iris_dataset.html)
--   We get insanely good classifications out of the box
--   Can't get easier than this
-
-::: {layout-ncol="1" layout-halign="center"}
-```{python}
-#| fig-align: center
-#| fig-cap: Using 80/20 holdout
-from xgboost import XGBClassifier
-import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix
-
-data = load_iris()
-X_train, X_test, y_train, y_test = train_test_split(data['data'], data['target'], test_size=.2, random_state=42)
-bst = XGBClassifier(n_estimators=2, max_depth=2, learning_rate=1, objective='binary:logistic')
-
-bst.fit(X_train, y_train)
-
-preds = bst.predict(X_test)
-
-cm = confusion_matrix(y_test, preds)
-sns.heatmap(cm, annot=True, fmt="d")
-plt.title("Confusion Matrix")
-plt.show()
-```
-:::
 
 ## What is XGBoost?
 
