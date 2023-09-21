@@ -9,7 +9,7 @@ bibliography: static/references.bib
 format: 
     revealjs:
         theme: default
-        toc: true
+        toc: false
 ---
 
 # By the end of this talk... {.unlisted}
@@ -18,7 +18,7 @@ You should understand every word of
 
 > XGBoost: A Scalable Tree Boosting
 
-And why you should use XGBoost
+And why you should use XGBoost!
 
 # Background
 
@@ -103,7 +103,7 @@ graph TD
 -   We can boost performance with ensemble learning
 -   Instead of creating complex model:
     -   Create lots of simple models (w. **weak learners**)
-    -   Combine them into **meta-model**
+    -   Combine them into a **meta-model**
 -   The output is a weighted voting of the output from each simple model
 
 ::: notes
