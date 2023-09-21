@@ -154,8 +154,22 @@ $$
 where $f_{i}(x)$ is the weak learner.
 
 ## Gradient Boosted Trees
+- Same as boosting, except:
+- Instead of fitting to errors from prev. trees, we fit to the negative gradients w.r.t the prediction of the prev. trees.
+- So it generalizes to arbitrary loss functions - as long as they are differentiable
 
-Original paper on Gradient Boosting is by @gb.
+::: aside
+The original paper on Gradient Boosting is by @gb.
+:::
+
+::: {.notes}
+These negative gradients represent the direction in which the model should change its predictions to minimize the loss. 
+
+In other words, the new trees are fit to the residuals defined in the "gradient space" rather than the "output space" like in traditional boosting.
+
+The use of gradient descent as an optimization framework also sets it apart from other boosting algorithms.
+:::
+
 
 # eXtreme Gradient Boosting
 
