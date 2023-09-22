@@ -114,6 +114,7 @@ Taken from 5th semester MI course at AAU.
 XGBoost uses CART: Classification and Regression Trees. I show decision trees to illustrate.
 
 These are different from decision trees in that there is a real score associated with each leaf. The leaf only contains this decision value.
+**So the leaf scores are continuous!**
 :::
 
 
@@ -156,7 +157,6 @@ where $f_{i}(x)$ is the weak learner.
 ## Gradient Boosted Trees
 - Same as boosting, except:
 - Instead of fitting to errors from prev. trees, we fit to the negative gradients w.r.t the prediction of the prev. trees.
-- So it generalizes to arbitrary loss functions - as long as they are differentiable
 
 ::: aside
 The original paper on Gradient Boosting is by @gb.
@@ -165,21 +165,173 @@ The original paper on Gradient Boosting is by @gb.
 ::: {.notes}
 These negative gradients represent the direction in which the model should change its predictions to minimize the loss. 
 
-In other words, the new trees are fit to the residuals defined in the "gradient space" rather than the "output space" like in traditional boosting.
-
 The use of gradient descent as an optimization framework also sets it apart from other boosting algorithms.
 :::
 
 
 # eXtreme Gradient Boosting
+*Putting it all together...*
 
-## What is XGBoost?
+## Contributions
+- Scalable, end-to-end tree boosting system^[End-to-end means it takes raw input and produces final output - no relying on intermediary or hand-coded steps]
+- Theoretically justified weighted quantile sketch for efficient proposal calculation^[It's efficient at finding optimal splits]
+- Sparsity-aware algorithm for parallel tree learning^[Sparsity means not all values are stored - e.g. $0$s or `NULL`s are not in $X$ training data]
+- Cache-aware block structure for out-of-core tree learning^[Out-of-core means that we learn (via online learning) on mini-batches of training data.]
 
--   XGBoost stands for eXtreme Gradient Boosting
--   Machine Learning algorithm
--   Based on Gradient Boosting
+::: {.notes}
+- **Scalable**: it works well with large datasets
+- **End-to-end**: this is true, but not in the same way deep learning algorithms are end-to-end - they can take raw images/raw text, xgb cannot
+- **Weighted quantile sketch**: this is what makes xgboost faster and more accurate than some other gradient boosting algorithms
+- **Sparsity-aware**: this is also useful for high dimensionality data with missing values
+- **Parallel**: both parallel computation during tree construction and boosting rounds
+- **Cache aware**: is because XGBoost has hardware-optimized data structures that are cache efficient.
+- **Out-of-core**: XGBoost doesn't use online learning - for XGBoost, this happens by storing data in binary files and loading chunks during learning.
+:::
 
-## Why XGBoost?
+## How XGBoost learns trees
+Our model is of the form
+
+$$
+\hat{y}_{i}=\sum^{K}_{k=1}f_{k}(x_{i}),\quad f_{k}\in\mathcal{F}
+$$
+
+where
+
+- $K$ is the number of trees,
+- $f_k$ is a function in the functional space $\mathcal{F}=\{ f(x)=w_{q(x)} \}$, which is the set of all possible CARTs,
+- $q$ maps a sample to a leaf,
+- and $w_j$ is the weight for a leaf $j$.
+
+## How XGBoost learns trees {.unlisted}
+The idea is we try to optimize
+
+$$
+obj(\theta)=\sum^{n}_{i}l(y_{i},\hat{y}_{i})+\sum^{K}_{k=1}\omega(f_{k})
+$$
+where $\omega(f_{k})$ is the complexity of the tree $f_{k}$.
+
+But... how do we actually learn the trees? What about their structure and leaf scores?
+
+::: aside
+As you may recall: objective function = loss function + regularization term.
+
+I'll talk about the complexity later.
+:::
+
+::: {.notes}
+Unfortunately, it's not as easy as just optimizing this function.
+
+We need to learn the functions $f_i$ which each contains the structure of the tree and leaf scores.
+:::
+
+## How XGBoost learns trees {.unlisted}
+We learn the trees additively!
+
+$$
+\begin{align}
+&\hat{y}^{(0)}_{i}=0 \\
+&\hat{y}^{(1)}_{i}=f_{1}(x_{i})=\hat{y}_{i}^{(0)}+f_{1}(x_{i}) \\
+&\hat{y}^{(2)}_{i}=f_{1}(x_{i})+f_{2}(x_{i})=\hat{y}_{i}^{(1)}+f_{2}(x_{i}) \\
+&\quad\cdots \\
+& \hat{y}^{(t)}_{i}=\sum^{t}_{k=1}f_{k}(x_{i})=\hat{y}_{i}^{(t-1)}+f_{t}(x_{i})
+\end{align}
+$$
+
+::: {.notes}
+So the prediction is going to be the sum of all tree functions, which is the same as all the previous predictions + our latest tree's prediction.
+:::
+
+## How do we know which tree we want at each step? {.unlisted}
+The one that optimizes our objective:
+
+$$
+\begin{align}
+obj(t) &= \sum^{n}_{i=1}l(y_{i},\hat{y}^{(t)}_{i})+\sum^{t}_{i=1}\omega(f_{i}) \\
+&=\sum^{n}_{i=1}l(y_{i},\hat{y}^{(t-1)}_{i}+f_{t}(x_{i}))+\omega(f_{t})+\text{constant}
+\end{align}
+$$
+
+However, we can't optimize this objective function with traditional methods in Euclidean space - because our model takes functions as parameters.
+
+::: {.notes}
+So we approximate it with Taylor expansion to the second-order to optimize for the general loss functions.
+
+This makes it possible to optimize as there are some loss functions you otherwise couldn't optimize – we make it general, so you can use arbitrary loss functions, as long as they are differentiable.
+:::
+
+## And what about the regularization term? {.unlisted}
+Remember our definition of a tree:
+$$
+f_{t}(x)=w_{q(x)},\quad w\in \mathbb{R}^{T}, q:\mathbb{R}^{d}\rightarrow \{1,2,\dots ,T\}
+$$
+$w$ is the vector score on leaves, $q$ is a function that assign each data point to the corresponding leaf, and $T$ is the number of leaves.
+
+We define the complexity as
+$$
+\omega(f)=\gamma T+ \frac{1}{2}\lambda \sum^{T}_{j=1}w^{2}_{j}
+$$
+
+
+::: {.notes}
+Now that we know the training step, we need to define the regularization
+
+$\gamma$ is the minimum gain to make a split, which helps us prevent the model from making too many splits unless they improve the fit.
+
+$\lambda$ is to regularize the leaf weights. They capture some pattern from the training data, but if they're too large/too small, the model might fit the data too closely - we don't want it to remember all the noise. If $\lambda$ is too large we might underfit because the weights are too small.
+
+So our complexity measure just regulates our model based on how many leaves it makes and ensures the weights don't get out of control.
+:::
+
+## Learning the tree structure {.unlisted}
+::: aside
+I'm skipping how we derive the structure function from the objective function
+:::
+
+Use the Exact Greedy Algorithm:
+
+1. Start with single root - contains all training examples
+2. Iterate over all features and values per feature and evaluate each possible split gain (see formula below)
+3. The **gain** for the best split must be positive, otherwise we stop growing the branch
+
+::: {.notes}
+**START HERE**
+
+- Cannot enumerate all possible tree structures...
+- So we find the best tree by optimizing one level at a time
+
+The algorithm here is the Exact Greedy Algoritm we use.
+
+**AFTER SLIDE**
+Let's review the gain.
+:::
+
+## Gain {.unlisted}
+We try to split a leaf into two leaves, and the score it gains is
+$$
+Gain=\frac{1}{2}\left[ \frac{G^{2}_{L}}{H_{L}+\lambda}+ \frac{G^{2}_{R}}{H_{R}+\lambda}-\frac{(G_{L}+G_{R})^{2}}{H_{L}+H_{R}+\lambda} \right]-\gamma
+$$
+
+1. The score on the new left leaf
+2. The score on the new right leaf
+3. The score if we do not split
+4. The complexity cost by adding additional leaf
+
+::: {.notes}
+First: gain is loss reduction - so it's a measure of whether we actually improve the model by splitting.
+
+1. The score on the new left leaf $\frac{G^{2}_{L}}{H_{L}+\lambda}$
+2. The score on the new right leaf $\frac{G^{2}_{R}}{H_{R}+\lambda}$
+3. The score if we do not split $\frac{(G_{L}+G_{R})^{2}}{H_{L}+H_{R}+\lambda}$
+4. The complexity cost by adding additional leaf $\gamma$
+
+If the gain is smaller than $\gamma$, we shouldn't add that branch (it'll be negative). This is the pruning technique used in tree-based models.
+:::
+
+## Further prevention of overfitting
+XGBoost also uses
+
+
+## Why XGBoost
 
 # Conclusion
 
