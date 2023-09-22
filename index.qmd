@@ -290,7 +290,8 @@ I'm skipping how we derive the structure function from the objective function
 Use the Exact Greedy Algorithm:
 
 1. Start with single root - contains all training examples
-2. Iterate over all features and values per feature and evaluate each possible split **gain** 
+2. Iterate over all features and values per feature^[Must be sorted] and evaluate each possible split **gain**
+3. Output split with best score
 
 The **gain** for the best split must be positive, otherwise we stop growing the branch
 
@@ -329,15 +330,98 @@ If the gain is smaller than $\gamma$, we shouldn't add that branch (it'll be neg
 :::
 
 ## Further prevention of overfitting
-XGBoost also uses
+XGBoost also uses two additional methods^[besides the regularization term] to prevent overfitting:
+
+- **Shrinkage**: scales newly added weights by a factor $\eta$ after each step of tree boosting.
+- **Column (feature) sub-sampling**: randomly select a subset of features for each tree (or split), so not all features are available when finding best split. This also speeds up computations of the parallel algorithm.
+
+::: {.notes}
+Shrinkage is similar to learning rate. It reduces the influence of each individual tree, so future trees can improve the model.
+:::
+
+## Making it scalable
+- Exact greedy algorithm is impossible to do efficiently when the data doesn't entirely fit in memory - or when in a distributed setting.
+- Solution: the **approximate algorithm**.
+- It finds split points for continuous features by using hisograms to approximate quantiles of the data distribution
+- Don't consider every feature value, just the boundary values as potential splits
+- Uses **weighted quantile sketches** to determine the bin boundaries
 
 
-## Why XGBoost
+::: {.notes}
+The histrogram basically buckets ranges of similar continuous values so we only have to consider the boundary values.
+
+The weighted quantile sketches:
+
+1. Sort and weigh - sort by feature value, associate each point with a weight
+2. Construct sketch in a distributed fashion. A sketch is like a 'summary' of the data distribution. Different partitions of the data build local sketches which are then merged together to get a global sketch.
+3. Approximate quantiles by using the sketch, and so the weighted quantiles become the candidate split points.
+:::
+
+## Sparsity-aware Split Finding
+- Handle sparse data by adding default directions to each tree node.
+- This also exploits the sparsity to make computation complexity linear with non-missing entries in input
+    - This lead to 50x speedup over naive version
+
+## Block Structures for Parallel Learning
+![@XGBoost](static/images/block.png)
+
+- Sorting the data takes most time
+- Reduce cost by storing data in (in-memory) blocks
+- Stored in compressed column (CSC) format - each column is sorted by corresponding feature vaue
+
+::: {.notes}
+- For exact greedy: store dataset in one block, then only need to do one scan over the pre-sortedentries to get statistics for split candidates
+- Approximate algorithm: use multiple blocks - can distribute over machines.
+- Easily supports column sub-sampling - just select a subset of columns
+- **Can parallelize collection of statistics, so we get a parallel algorithm for split finding**
+:::
+
+## Cache-aware access
+- Block structure helps computation complexity of spit finding, but the new algorithm requires non-continuous memory access
+- Want to get cache hits
+- Solution: Use prefetching
+- Cache-aware algorithm implementation of the exact greedy algorithm runs 2x fast as naive version for large datasets
+- For the approximate algorithm, the problem is solved by using a correct block size
+
+::: {.notes}
+Basically, as the algorithm processes each feature, it prefetches the next feature's data. By the time the algorithm is ready to work on the next feature, the data is already in the cache.
+
+The prefetch mechanism reduces the chance of a cache miss, which would result in a slower fetch from main ram.
+
+**Select a good block size** which balances parallelization and cache property
+(too small = threads get too little work, too large = cache misses as gradient statistics don't fit in CPU cache).
+:::
+
+## Blocks for Out-of-core Computation
+- Can make the system even more performant by better utilizing disk space to handle data that doesn't fit in main memory
+- Divide data into multiple blocks - store them on disk
+- Use independent thread to pre-fetch the block into main memory buffer, so computation & disk reading happens concurrently
+- Also uses **block compression** and **block sharding**
+
+::: {.notes}
+But the independent pre-fetch thread is not enough!
+Disk reading takes most of the computation time.
+
+We also need to reduce overhead and increase throughput of disk IO. They use two techniques for this:
+
+- **Block Compression**: block is compressed by columns, and decompressed on the fly via independent thread when loaded into main memory. This helps trade some of the computation in decompression with the disk reading cost.
+- **Block Sharding**: Shard data onto multiple disk in an alternative manner. A pre-fetcher thread is assigned to each disk and fetches the data into an in-memory buffer. The training thread then alternatively reads the data from each buffer. This helps increase the throughput of disk reading when multiple disks are available.
+:::
 
 # Conclusion
 
 ## Two Strong Points of the Article
+- **True end-to-end system optimization**. Very impressive focus on creating a scalable, performant system on all levels: distributed hardware, hardware, software, and algorithm.
+- **Impressive flexibility**, enabled by accepting arbitrary loss functions: can do regression, classification, ranking, etc. with XGBoost.
 
 ## Two Weak Points of the Article
+- **Evaluation was very focused on efficiency**. Would have liked to see more about performance on various tasks.^[Although due to the many awards and challenges won with XGBoost, this is evidently good]
+- The focus on so many different optimizations makes the paper very broad
 
 ## Take-Home Message
+- Why XGBoost?
+    - Superior predictions to many other algorithms, especially on tabular data
+    - Incredibly efficient end-to-end system
+- And hopefully every word of "*XGBoost: A Scalable Tree Boosting System*" now makes sense
+
+<br />
