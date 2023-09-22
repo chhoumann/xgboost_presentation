@@ -840,7 +840,7 @@ Gain=\frac{1}{2}\left[ \frac{G^{2}_{L}}{H_{L}+\lambda}+ \frac{G^{2}_{R}}{H_{R}+\
 <ul>
 <li>Exact greedy algorithm is impossible to do efficiently when the data doesn’t entirely fit in memory - or when in a distributed setting.</li>
 <li>Solution: the <strong>approximate algorithm</strong>.</li>
-<li>It finds split points for continuous features by using hisograms to approximate quantiles of the data distribution</li>
+<li>It finds split points for continuous features by using histogram to approximate quantiles of the data distribution</li>
 <li>Don’t consider every feature value, just the boundary values as potential splits</li>
 <li>Uses <strong>weighted quantile sketches</strong> to determine the bin boundaries</li>
 </ul>
@@ -904,7 +904,7 @@ Gain=\frac{1}{2}\left[ \frac{G^{2}_{L}}{H_{L}+\lambda}+ \frac{G^{2}_{R}}{H_{R}+\
 <section id="cache-aware-access" class="slide level2">
 <h2>Cache-aware access</h2>
 <ul>
-<li>Block structure helps computation complexity of spit finding, but the new algorithm requires non-continuous memory access</li>
+<li>Block structure helps computation complexity of split finding, but the new algorithm requires non-continuous memory access</li>
 <li>Want to get cache hits</li>
 <li>Solution: Use prefetching</li>
 <li>Cache-aware algorithm implementation of the exact greedy algorithm runs 2x fast as naive version for large datasets</li>
