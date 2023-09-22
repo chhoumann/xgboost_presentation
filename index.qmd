@@ -290,8 +290,9 @@ I'm skipping how we derive the structure function from the objective function
 Use the Exact Greedy Algorithm:
 
 1. Start with single root - contains all training examples
-2. Iterate over all features and values per feature and evaluate each possible split gain (see formula below)
-3. The **gain** for the best split must be positive, otherwise we stop growing the branch
+2. Iterate over all features and values per feature and evaluate each possible split **gain** 
+
+The **gain** for the best split must be positive, otherwise we stop growing the branch
 
 ::: {.notes}
 **START HERE**
@@ -324,7 +325,7 @@ First: gain is loss reduction - so it's a measure of whether we actually improve
 3. The score if we do not split $\frac{(G_{L}+G_{R})^{2}}{H_{L}+H_{R}+\lambda}$
 4. The complexity cost by adding additional leaf $\gamma$
 
-If the gain is smaller than $\gamma$, we shouldn't add that branch (it'll be negative). This is the pruning technique used in tree-based models.
+If the gain is smaller than $\gamma$, we shouldn't add that branch (it'll be negative).
 :::
 
 ## Further prevention of overfitting
