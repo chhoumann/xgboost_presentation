@@ -514,7 +514,7 @@ obj(\theta)=L(\theta)+\Omega(\theta)
 
 <aside class="notes">
 <p>XGBoost uses CART: Classification and Regression Trees. I show decision trees to illustrate.</p>
-<p>These are different from decision trees in that there is a real score associated with each leaf. The leaf only contains this decision value.</p>
+<p>These are different from decision trees in that there is a real score associated with each leaf. The leaf only contains this decision value. <strong>So the leaf scores are continuous!</strong></p>
 <style type="text/css">
         span.MJX_Assistive_MathML {
           position:absolute!important;
@@ -580,12 +580,10 @@ F(x)=\sum^{M}_{i=1}f_{i}(x)
 <ul>
 <li>Same as boosting, except:</li>
 <li>Instead of fitting to errors from prev. trees, we fit to the negative gradients w.r.t the prediction of the prev. trees.</li>
-<li>So it generalizes to arbitrary loss functions - as long as they are differentiable</li>
 </ul>
 
 <aside class="notes">
 <p>These negative gradients represent the direction in which the model should change its predictions to minimize the loss.</p>
-<p>In other words, the new trees are fit to the residuals defined in the “gradient space” rather than the “output space” like in traditional boosting.</p>
 <p>The use of gradient descent as an optimization framework also sets it apart from other boosting algorithms.</p>
 <style type="text/css">
         span.MJX_Assistive_MathML {
@@ -604,18 +602,223 @@ F(x)=\sum^{M}_{i=1}f_{i}(x)
 <section>
 <section id="extreme-gradient-boosting" class="title-slide slide level1 center">
 <h1>eXtreme Gradient Boosting</h1>
-
+<p><em>Putting it all together…</em></p>
 </section>
-<section id="what-is-xgboost" class="slide level2">
-<h2>What is XGBoost?</h2>
+<section id="contributions" class="slide level2">
+<h2>Contributions</h2>
 <ul>
-<li>XGBoost stands for eXtreme Gradient Boosting</li>
-<li>Machine Learning algorithm</li>
-<li>Based on Gradient Boosting</li>
+<li>Scalable, end-to-end tree boosting system<sup>1</sup></li>
+<li>Theoretically justified weighted quantile sketch for efficient proposal calculation<sup>2</sup></li>
+<li>Sparsity-aware algorithm for parallel tree learning<sup>3</sup></li>
+<li>Cache-aware block structure for out-of-core tree learning<sup>4</sup></li>
+</ul>
+<aside class="notes">
+<ul>
+<li><strong>Scalable</strong>: it works well with large datasets</li>
+<li><strong>End-to-end</strong>: this is true, but not in the same way deep learning algorithms are end-to-end - they can take raw images/raw text, xgb cannot</li>
+<li><strong>Weighted quantile sketch</strong>: this is what makes xgboost faster and more accurate than some other gradient boosting algorithms</li>
+<li><strong>Sparsity-aware</strong>: this is also useful for high dimensionality data with missing values</li>
+<li><strong>Parallel</strong>: both parallel computation during tree construction and boosting rounds</li>
+<li><strong>Cache aware</strong>: is because XGBoost has hardware-optimized data structures that are cache efficient.</li>
+<li><strong>Out-of-core</strong>: XGBoost doesn’t use online learning - for XGBoost, this happens by storing data in binary files and loading chunks during learning.</li>
+</ul>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+<aside><ol class="aside-footnotes"><li id="fn1"><p>End-to-end means it takes raw input and produces final output - no relying on intermediary or hand-coded steps</p></li><li id="fn2"><p>It’s efficient at finding optimal splits</p></li><li id="fn3"><p>Sparsity means not all values are stored - e.g.&nbsp;<span class="math inline">\(0\)</span>s or <code>NULL</code>s are not in <span class="math inline">\(X\)</span> training data</p></li><li id="fn4"><p>Out-of-core means that we learn (via online learning) on mini-batches of training data.</p></li></ol></aside></section>
+<section id="how-xgboost-learns-trees" class="slide level2">
+<h2>How XGBoost learns trees</h2>
+<p>Our model is of the form</p>
+<p><span class="math display">\[
+\hat{y}_{i}=\sum^{K}_{k=1}f_{k}(x_{i}),\quad f_{k}\in\mathcal{F}
+\]</span></p>
+<p>where</p>
+<ul>
+<li><span class="math inline">\(K\)</span> is the number of trees,</li>
+<li><span class="math inline">\(f_k\)</span> is a function in the functional space <span class="math inline">\(\mathcal{F}=\{ f(x)=w_{q(x)} \}\)</span>, which is the set of all possible CARTs,</li>
+<li><span class="math inline">\(q\)</span> maps a sample to a leaf,</li>
+<li>and <span class="math inline">\(w_j\)</span> is the weight for a leaf <span class="math inline">\(j\)</span>.</li>
 </ul>
 </section>
+<section id="how-xgboost-learns-trees-1" class="slide level2 unlisted">
+<h2>How XGBoost learns trees</h2>
+<p>The idea is we try to optimize</p>
+<p><span class="math display">\[
+obj(\theta)=\sum^{n}_{i}l(y_{i},\hat{y}_{i})+\sum^{K}_{k=1}\omega(f_{k})
+\]</span> where <span class="math inline">\(\omega(f_{k})\)</span> is the complexity of the tree <span class="math inline">\(f_{k}\)</span>.</p>
+<p>But… how do we actually learn the trees? What about their structure and leaf scores?</p>
+
+<aside class="notes">
+<p>Unfortunately, it’s not as easy as just optimizing this function.</p>
+<p>We need to learn the functions <span class="math inline">\(f_i\)</span> which each contains the structure of the tree and leaf scores.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+<aside><div>
+<p>As you may recall: objective function = loss function + regularization term.</p>
+<p>I’ll talk about the complexity later.</p>
+</div></aside></section>
+<section id="how-xgboost-learns-trees-2" class="slide level2 unlisted">
+<h2>How XGBoost learns trees</h2>
+<p>We learn the trees additively!</p>
+<p><span class="math display">\[
+\begin{align}
+&amp;\hat{y}^{(0)}_{i}=0 \\
+&amp;\hat{y}^{(1)}_{i}=f_{1}(x_{i})=\hat{y}_{i}^{(0)}+f_{1}(x_{i}) \\
+&amp;\hat{y}^{(2)}_{i}=f_{1}(x_{i})+f_{2}(x_{i})=\hat{y}_{i}^{(1)}+f_{2}(x_{i}) \\
+&amp;\quad\cdots \\
+&amp; \hat{y}^{(t)}_{i}=\sum^{t}_{k=1}f_{k}(x_{i})=\hat{y}_{i}^{(t-1)}+f_{t}(x_{i})
+\end{align}
+\]</span></p>
+<aside class="notes">
+<p>So the prediction is going to be the sum of all tree functions, which is the same as all the previous predictions + our latest tree’s prediction.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="how-do-we-know-which-tree-we-want-at-each-step" class="slide level2 unlisted">
+<h2>How do we know which tree we want at each step?</h2>
+<p>The one that optimizes our objective:</p>
+<p><span class="math display">\[
+\begin{align}
+obj(t) &amp;= \sum^{n}_{i=1}l(y_{i},\hat{y}^{(t)}_{i})+\sum^{t}_{i=1}\omega(f_{i}) \\
+&amp;=\sum^{n}_{i=1}l(y_{i},\hat{y}^{(t-1)}_{i}+f_{t}(x_{i}))+\omega(f_{t})+\text{constant}
+\end{align}
+\]</span></p>
+<p>However, we can’t optimize this objective function with traditional methods in Euclidean space - because our model takes functions as parameters.</p>
+<aside class="notes">
+<p>So we approximate it with Taylor expansion to the second-order to optimize for the general loss functions.</p>
+<p>This makes it possible to optimize as there are some loss functions you otherwise couldn’t optimize – we make it general, so you can use arbitrary loss functions, as long as they are differentiable.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="and-what-about-the-regularization-term" class="slide level2 unlisted">
+<h2>And what about the regularization term?</h2>
+<p>Remember our definition of a tree: <span class="math display">\[
+f_{t}(x)=w_{q(x)},\quad w\in \mathbb{R}^{T}, q:\mathbb{R}^{d}\rightarrow \{1,2,\dots ,T\}
+\]</span> <span class="math inline">\(w\)</span> is the vector score on leaves, <span class="math inline">\(q\)</span> is a function that assign each data point to the corresponding leaf, and <span class="math inline">\(T\)</span> is the number of leaves.</p>
+<p>We define the complexity as <span class="math display">\[
+\omega(f)=\gamma T+ \frac{1}{2}\lambda \sum^{T}_{j=1}w^{2}_{j}
+\]</span></p>
+<aside class="notes">
+<p>Now that we know the training step, we need to define the regularization</p>
+<p><span class="math inline">\(\gamma\)</span> is the minimum gain to make a split, which helps us prevent the model from making too many splits unless they improve the fit.</p>
+<p><span class="math inline">\(\lambda\)</span> is to regularize the leaf weights. They capture some pattern from the training data, but if they’re too large/too small, the model might fit the data too closely - we don’t want it to remember all the noise. If <span class="math inline">\(\lambda\)</span> is too large we might underfit because the weights are too small.</p>
+<p>So our complexity measure just regulates our model based on how many leaves it makes and ensures the weights don’t get out of control.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="learning-the-tree-structure" class="slide level2 unlisted">
+<h2>Learning the tree structure</h2>
+
+<p>Use the Exact Greedy Algorithm:</p>
+<ol type="1">
+<li>Start with single root - contains all training examples</li>
+<li>Iterate over all features and values per feature and evaluate each possible split gain (see formula below)</li>
+<li>The <strong>gain</strong> for the best split must be positive, otherwise we stop growing the branch</li>
+</ol>
+<aside class="notes">
+<p><strong>START HERE</strong></p>
+<ul>
+<li>Cannot enumerate all possible tree structures…</li>
+<li>So we find the best tree by optimizing one level at a time</li>
+</ul>
+<p>The algorithm here is the Exact Greedy Algoritm we use.</p>
+<p><strong>AFTER SLIDE</strong> Let’s review the gain.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+<aside><div>
+<p>I’m skipping how we derive the structure function from the objective function</p>
+</div></aside></section>
+<section id="gain" class="slide level2 unlisted">
+<h2>Gain</h2>
+<p>We try to split a leaf into two leaves, and the score it gains is <span class="math display">\[
+Gain=\frac{1}{2}\left[ \frac{G^{2}_{L}}{H_{L}+\lambda}+ \frac{G^{2}_{R}}{H_{R}+\lambda}-\frac{(G_{L}+G_{R})^{2}}{H_{L}+H_{R}+\lambda} \right]-\gamma
+\]</span></p>
+<ol type="1">
+<li>The score on the new left leaf</li>
+<li>The score on the new right leaf</li>
+<li>The score if we do not split</li>
+<li>The complexity cost by adding additional leaf</li>
+</ol>
+<aside class="notes">
+<p>First: gain is loss reduction - so it’s a measure of whether we actually improve the model by splitting.</p>
+<ol type="1">
+<li>The score on the new left leaf <span class="math inline">\(\frac{G^{2}_{L}}{H_{L}+\lambda}\)</span></li>
+<li>The score on the new right leaf <span class="math inline">\(\frac{G^{2}_{R}}{H_{R}+\lambda}\)</span></li>
+<li>The score if we do not split <span class="math inline">\(\frac{(G_{L}+G_{R})^{2}}{H_{L}+H_{R}+\lambda}\)</span></li>
+<li>The complexity cost by adding additional leaf <span class="math inline">\(\gamma\)</span></li>
+</ol>
+<p>If the gain is smaller than <span class="math inline">\(\gamma\)</span>, we shouldn’t add that branch (it’ll be negative). This is the pruning technique used in tree-based models.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="further-prevention-of-overfitting" class="slide level2">
+<h2>Further prevention of overfitting</h2>
+<p>XGBoost also uses</p>
+</section>
 <section id="why-xgboost" class="slide level2">
-<h2>Why XGBoost?</h2>
+<h2>Why XGBoost</h2>
 </section></section>
 <section>
 <section id="conclusion" class="title-slide slide level1 center">
@@ -643,6 +846,7 @@ Friedman, Jerome H. 2001. <span>“Greedy Function Approximation: <span>A</span>
 </div>
 </div>
 </section></section>
+
     </div>
   </div>
 
