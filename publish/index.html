@@ -756,9 +756,10 @@ f_{t}(x)=w_{q(x)},\quad w\in \mathbb{R}^{T}, q:\mathbb{R}^{d}\rightarrow \{1,2,\
 <p>Use the Exact Greedy Algorithm:</p>
 <ol type="1">
 <li>Start with single root - contains all training examples</li>
-<li>Iterate over all features and values per feature and evaluate each possible split gain (see formula below)</li>
-<li>The <strong>gain</strong> for the best split must be positive, otherwise we stop growing the branch</li>
+<li>Iterate over all features and values per feature<sup>1</sup> and evaluate each possible split <strong>gain</strong></li>
+<li>Output split with best score</li>
 </ol>
+<p>The <strong>gain</strong> for the best split must be positive, otherwise we stop growing the branch</p>
 <aside class="notes">
 <p><strong>START HERE</strong></p>
 <ul>
@@ -780,7 +781,7 @@ f_{t}(x)=w_{q(x)},\quad w\in \mathbb{R}^{T}, q:\mathbb{R}^{d}\rightarrow \{1,2,\
       }</style></aside>
 <aside><div>
 <p>I’m skipping how we derive the structure function from the objective function</p>
-</div></aside></section>
+</div><ol class="aside-footnotes"><li id="fn5"><p>Must be sorted</p></li></ol></aside></section>
 <section id="gain" class="slide level2 unlisted">
 <h2>Gain</h2>
 <p>We try to split a leaf into two leaves, and the score it gains is <span class="math display">\[
@@ -800,7 +801,7 @@ Gain=\frac{1}{2}\left[ \frac{G^{2}_{L}}{H_{L}+\lambda}+ \frac{G^{2}_{R}}{H_{R}+\
 <li>The score if we do not split <span class="math inline">\(\frac{(G_{L}+G_{R})^{2}}{H_{L}+H_{R}+\lambda}\)</span></li>
 <li>The complexity cost by adding additional leaf <span class="math inline">\(\gamma\)</span></li>
 </ol>
-<p>If the gain is smaller than <span class="math inline">\(\gamma\)</span>, we shouldn’t add that branch (it’ll be negative). This is the pruning technique used in tree-based models.</p>
+<p>If the gain is smaller than <span class="math inline">\(\gamma\)</span>, we shouldn’t add that branch (it’ll be negative).</p>
 <style type="text/css">
         span.MJX_Assistive_MathML {
           position:absolute!important;
@@ -815,10 +816,142 @@ Gain=\frac{1}{2}\left[ \frac{G^{2}_{L}}{H_{L}+\lambda}+ \frac{G^{2}_{R}}{H_{R}+\
 </section>
 <section id="further-prevention-of-overfitting" class="slide level2">
 <h2>Further prevention of overfitting</h2>
-<p>XGBoost also uses</p>
+<p>XGBoost also uses two additional methods<sup>1</sup> to prevent overfitting:</p>
+<ul>
+<li><strong>Shrinkage</strong>: scales newly added weights by a factor <span class="math inline">\(\eta\)</span> after each step of tree boosting.</li>
+<li><strong>Column (feature) sub-sampling</strong>: randomly select a subset of features for each tree (or split), so not all features are available when finding best split. This also speeds up computations of the parallel algorithm.</li>
+</ul>
+<aside class="notes">
+<p>Shrinkage is similar to learning rate. It reduces the influence of each individual tree, so future trees can improve the model.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+<aside><ol class="aside-footnotes"><li id="fn6"><p>besides the regularization term</p></li></ol></aside></section>
+<section id="making-it-scalable" class="slide level2">
+<h2>Making it scalable</h2>
+<ul>
+<li>Exact greedy algorithm is impossible to do efficiently when the data doesn’t entirely fit in memory - or when in a distributed setting.</li>
+<li>Solution: the <strong>approximate algorithm</strong>.</li>
+<li>It finds split points for continuous features by using hisograms to approximate quantiles of the data distribution</li>
+<li>Don’t consider every feature value, just the boundary values as potential splits</li>
+<li>Uses <strong>weighted quantile sketches</strong> to determine the bin boundaries</li>
+</ul>
+<aside class="notes">
+<p>The histrogram basically buckets ranges of similar continuous values so we only have to consider the boundary values.</p>
+<p>The weighted quantile sketches:</p>
+<ol type="1">
+<li>Sort and weigh - sort by feature value, associate each point with a weight</li>
+<li>Construct sketch in a distributed fashion. A sketch is like a ‘summary’ of the data distribution. Different partitions of the data build local sketches which are then merged together to get a global sketch.</li>
+<li>Approximate quantiles by using the sketch, and so the weighted quantiles become the candidate split points.</li>
+</ol>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section>
-<section id="why-xgboost" class="slide level2">
-<h2>Why XGBoost</h2>
+<section id="sparsity-aware-split-finding" class="slide level2">
+<h2>Sparsity-aware Split Finding</h2>
+<ul>
+<li>Handle sparse data by adding default directions to each tree node.</li>
+<li>This also exploits the sparsity to make computation complexity linear with non-missing entries in input
+<ul>
+<li>This lead to 50x speedup over naive version</li>
+</ul></li>
+</ul>
+</section>
+<section id="block-structures-for-parallel-learning" class="slide level2">
+<h2>Block Structures for Parallel Learning</h2>
+
+<img data-src="static/images/block.png" class="r-stretch quarto-figure-center"><p class="caption"><span class="citation" data-cites="XGBoost">Chen and Guestrin (<a href="#/take-home-message" role="doc-biblioref" onclick="">2016</a>)</span></p><ul>
+<li>Sorting the data takes most time</li>
+<li>Reduce cost by storing data in (in-memory) blocks</li>
+<li>Stored in compressed column (CSC) format - each column is sorted by corresponding feature vaue</li>
+</ul>
+<aside class="notes">
+<ul>
+<li>For exact greedy: store dataset in one block, then only need to do one scan over the pre-sortedentries to get statistics for split candidates</li>
+<li>Approximate algorithm: use multiple blocks - can distribute over machines.</li>
+<li>Easily supports column sub-sampling - just select a subset of columns</li>
+<li><strong>Can parallelize collection of statistics, so we get a parallel algorithm for split finding</strong></li>
+</ul>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="cache-aware-access" class="slide level2">
+<h2>Cache-aware access</h2>
+<ul>
+<li>Block structure helps computation complexity of spit finding, but the new algorithm requires non-continuous memory access</li>
+<li>Want to get cache hits</li>
+<li>Solution: Use prefetching</li>
+<li>Cache-aware algorithm implementation of the exact greedy algorithm runs 2x fast as naive version for large datasets</li>
+<li>For the approximate algorithm, the problem is solved by using a correct block size</li>
+</ul>
+<aside class="notes">
+<p>Basically, as the algorithm processes each feature, it prefetches the next feature’s data. By the time the algorithm is ready to work on the next feature, the data is already in the cache.</p>
+<p>The prefetch mechanism reduces the chance of a cache miss, which would result in a slower fetch from main ram.</p>
+<p><strong>Select a good block size</strong> which balances parallelization and cache property (too small = threads get too little work, too large = cache misses as gradient statistics don’t fit in CPU cache).</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="blocks-for-out-of-core-computation" class="slide level2">
+<h2>Blocks for Out-of-core Computation</h2>
+<ul>
+<li>Can make the system even more performant by better utilizing disk space to handle data that doesn’t fit in main memory</li>
+<li>Divide data into multiple blocks - store them on disk</li>
+<li>Use independent thread to pre-fetch the block into main memory buffer, so computation &amp; disk reading happens concurrently</li>
+<li>Also uses <strong>block compression</strong> and <strong>block sharding</strong></li>
+</ul>
+<aside class="notes">
+<p>But the independent pre-fetch thread is not enough! Disk reading takes most of the computation time.</p>
+<p>We also need to reduce overhead and increase throughput of disk IO. They use two techniques for this:</p>
+<ul>
+<li><strong>Block Compression</strong>: block is compressed by columns, and decompressed on the fly via independent thread when loaded into main memory. This helps trade some of the computation in decompression with the disk reading cost.</li>
+<li><strong>Block Sharding</strong>: Shard data onto multiple disk in an alternative manner. A pre-fetcher thread is assigned to each disk and fetches the data into an in-memory buffer. The training thread then alternatively reads the data from each buffer. This helps increase the throughput of disk reading when multiple disks are available.</li>
+</ul>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
 </section></section>
 <section>
 <section id="conclusion" class="title-slide slide level1 center">
@@ -827,12 +960,29 @@ Gain=\frac{1}{2}\left[ \frac{G^{2}_{L}}{H_{L}+\lambda}+ \frac{G^{2}_{R}}{H_{R}+\
 </section>
 <section id="two-strong-points-of-the-article" class="slide level2">
 <h2>Two Strong Points of the Article</h2>
+<ul>
+<li><strong>True end-to-end system optimization</strong>. Very impressive focus on creating a scalable, performant system on all levels: distributed hardware, hardware, software, and algorithm.</li>
+<li><strong>Impressive flexibility</strong>, enabled by accepting arbitrary loss functions: can do regression, classification, ranking, etc. with XGBoost.</li>
+</ul>
 </section>
 <section id="two-weak-points-of-the-article" class="slide level2">
 <h2>Two Weak Points of the Article</h2>
-</section>
+<ul>
+<li><strong>Evaluation was very focused on efficiency</strong>. Would have liked to see more about performance on various tasks.<sup>1</sup></li>
+<li>The focus on so many different optimizations makes the paper very broad</li>
+</ul>
+<aside><ol class="aside-footnotes"><li id="fn7"><p>Although due to the many awards and challenges won with XGBoost, this is evidently good</p></li></ol></aside></section>
 <section id="take-home-message" class="slide level2 smaller scrollable">
 <h2>Take-Home Message</h2>
+<ul>
+<li>Why XGBoost?
+<ul>
+<li>Superior predictions to many other algorithms, especially on tabular data</li>
+<li>Incredibly efficient end-to-end system</li>
+</ul></li>
+<li>And hopefully every word of “<em>XGBoost: A Scalable Tree Boosting System</em>” now makes sense</li>
+</ul>
+<p><br></p>
 
 <div class="footer footer-default">
 
