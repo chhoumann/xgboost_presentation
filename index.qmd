@@ -342,7 +342,7 @@ Shrinkage is similar to learning rate. It reduces the influence of each individu
 ## Making it scalable
 - Exact greedy algorithm is impossible to do efficiently when the data doesn't entirely fit in memory - or when in a distributed setting.
 - Solution: the **approximate algorithm**.
-- It finds split points for continuous features by using hisograms to approximate quantiles of the data distribution
+- It finds split points for continuous features by using histogram to approximate quantiles of the data distribution
 - Don't consider every feature value, just the boundary values as potential splits
 - Uses **weighted quantile sketches** to determine the bin boundaries
 
@@ -377,7 +377,7 @@ The weighted quantile sketches:
 :::
 
 ## Cache-aware access
-- Block structure helps computation complexity of spit finding, but the new algorithm requires non-continuous memory access
+- Block structure helps computation complexity of split finding, but the new algorithm requires non-continuous memory access
 - Want to get cache hits
 - Solution: Use prefetching
 - Cache-aware algorithm implementation of the exact greedy algorithm runs 2x fast as naive version for large datasets
